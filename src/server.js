@@ -11,12 +11,23 @@ app.use(express.json());
 // make a query to the database that returns all the entries references
 app.get('/v1/api/recetas/databases/:databaseId', async (req, res) => {
   const { databaseId } = req.params;
-
   try {
     const response = await notion.databases.query({ database_id: databaseId });
-    console.log(response);
+    const results = response['results'];
 
-    res.json(response);
+    const entries = results.map((entry) => {
+      return {
+        id: entry.id,
+        created_time: entry.created_time,
+        name: entry.properties.Nombre.title[0].plain_text,
+        tags_name: entry.properties.Etiqueta.multi_select.map((tag) => ({
+          name: tag.name,
+          color: tag.color,
+        })),
+      };
+    });
+
+    res.json(entries);
   } catch (error) {
     res.status(500).json({ message: 'error', error });
   }
@@ -25,7 +36,6 @@ app.get('/v1/api/recetas/databases/:databaseId', async (req, res) => {
 // make a query to get back a specific page by its id
 app.get('/v1/api/recetas/paginas/:pageId', async (req, res) => {
   const { pageId } = req.params;
-
   try {
     const response = await notion.pages.retrieve({ page_id: pageId });
     console.log(response);
@@ -36,20 +46,20 @@ app.get('/v1/api/recetas/paginas/:pageId', async (req, res) => {
   }
 });
 
+// make a query to get back the content of a specific page by its id
 app.get('/v1/api/recetas/paginas/contenido/:pageId', async (req, res) => {
-    const { pageId } = req.params;
-  
-    try {
-        const response = await notion.blocks.children.list({
-            block_id: pageId,
-            page_size: 50,
-          });
-  
-      res.json(response);
-    } catch (error) {
-      res.status(500).json({ message: 'error', error });
-    }
-  });
+  const { pageId } = req.params;
+  try {
+    const response = await notion.blocks.children.list({
+      block_id: pageId,
+      page_size: 50,
+    });
+
+    res.json(response);
+  } catch (error) {
+    res.status(500).json({ message: 'error', error });
+  }
+});
 
 //create an entry in the database
 app.post('/v1/api/recetas', async function (request, response) {
