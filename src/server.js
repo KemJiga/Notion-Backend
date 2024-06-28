@@ -17,7 +17,7 @@ app.get('/v1/api/recetas/databases/:databaseId', async (req, res) => {
 
     const entries = results.map((entry) => {
       return {
-        id: entry.id,
+        id: entry.id.replace("-", ""),
         created_time: entry.created_time,
         name: entry.properties.Nombre.title[0].plain_text,
         tags_name: entry.properties.Etiqueta.multi_select.map((tag) => ({
