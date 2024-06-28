@@ -17,10 +17,10 @@ app.get('/v1/api/recetas/databases/:databaseId', async (req, res) => {
 
     const entries = results.map((entry) => {
       return {
-        id: entry.id.replace(/-/g, ""),
+        id: entry.id.replace(/-/g, ''),
         created_time: entry.created_time,
         name: entry.properties.Nombre.title[0].plain_text,
-        tags_name: entry.properties.Etiqueta.multi_select.map((tag) => ({
+        tags: entry.properties.Etiqueta.multi_select.map((tag) => ({
           name: tag.name,
           color: tag.color,
         })),
@@ -38,9 +38,17 @@ app.get('/v1/api/recetas/paginas/:pageId', async (req, res) => {
   const { pageId } = req.params;
   try {
     const response = await notion.pages.retrieve({ page_id: pageId });
-    console.log(response);
 
-    res.json(response);
+    const page = {
+      created_time: response.created_time,
+      name: response.properties.Nombre.title[0].plain_text,
+      tags: response.properties.Etiqueta.multi_select.map((tag) => ({
+        name: tag.name,
+        color: tag.color,
+      })),
+    };
+
+    res.json(page);
   } catch (error) {
     res.status(500).json({ message: 'error', error });
   }
@@ -55,7 +63,30 @@ app.get('/v1/api/recetas/paginas/contenido/:pageId', async (req, res) => {
       page_size: 50,
     });
 
-    res.json(response);
+    const results = response['results'];
+
+    var titles = [];
+    var ingredients = [];
+    var steps = [];
+    var details = '';
+
+    var last_block = '';
+
+    results.map((block) => {
+      if (block.type === 'heading_2') {
+        titles.push(block.heading_2.rich_text[0].plain_text);
+      } else if (block.type === 'bulleted_list_item') {
+        ingredients.push(block.bulleted_list_item.rich_text[0].plain_text);
+      } else if (block.type === 'numbered_list_item') {
+        steps.push(block.numbered_list_item.rich_text[0].plain_text);
+      } else if (block.type === 'paragraph' && last_block === 'heading_2') {
+        details = block.paragraph.rich_text[0].plain_text;
+      }
+      last_block = block.type;
+    });
+
+    // res.json(results);
+    res.json({ titles: titles, ingredients: ingredients, steps: steps, details: details});
   } catch (error) {
     res.status(500).json({ message: 'error', error });
   }
